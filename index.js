@@ -296,6 +296,7 @@ class microbitRadioBlocks {
                     text: FormHelp[the_locale],
                     arguments: {},
                 },
+                /*
                 {
                     opcode: "control_extension",
                     blockType: BlockType.COMMAND,
@@ -330,6 +331,7 @@ class microbitRadioBlocks {
                         },
                     },
                 },
+                */
                 {
                     opcode: "whenAnyMessageReceive",
                     blockType: BlockType.HAT,
@@ -404,11 +406,9 @@ class microbitRadioBlocks {
         // {"proximity":proximity, "delta":delta} gesture
         let result = this.client.adapter_node_content_reporter;
         // 避免未定义
-        if (result) {
-            return result;
-        } else {
-            return "";
-        }
+        if (result){
+            return JSON.stringify(result)
+        } else{return ""}
     }
 
     whenMessageReceive(args) {
