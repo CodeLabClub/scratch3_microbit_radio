@@ -77,15 +77,15 @@ class Client {
     notify_callback(msg) {
         // 使用通知机制直到自己退出
         if (msg.message === `${this.NODE_ID} stopped`){
-            this._microbitRadioBlocks.reset();
+            this._Blocks.reset();
         }
     }
 
 
-    constructor(node_id, help_url, _microbitRadioBlocks) {
+    constructor(node_id, help_url,runtime, _Blocks) {
         this.NODE_ID = node_id;
         this.HELP_URL = help_url;
-        this._microbitRadioBlocks = _microbitRadioBlocks;
+        this._Blocks = _Blocks;
 
         this.adapter_base_client = new AdapterBaseClient(
             null, // onConnect,
@@ -96,7 +96,9 @@ class Client {
             null, // node_statu_change_callback,
             this.notify_callback.bind(this), // notify_callback,
             null, // error_message_callback,
-            null // update_adapter_status
+            null, // update_adapter_status
+            20,
+            runtime
         );
     }
 
@@ -140,7 +142,7 @@ class microbitRadioBlocks {
          * @type {Runtime}
          */
         this._runtime = runtime
-        this.client = new Client(NODE_ID, HELP_URL, this); // this is microbitRadioBlocks
+        this.client = new Client(NODE_ID, HELP_URL,runtime, this); // this is microbitRadioBlocks
 
         this._runtime.registerPeripheralExtension('microbitRadio', this); // 主要使用UI runtime
     }
@@ -180,7 +182,8 @@ class microbitRadioBlocks {
         promise.then(() => {
             return this.client.adapter_base_client.emit_with_messageid(
                 NODE_ID,
-                code
+                code,
+                10000
             )
         }).then(() => {
             let ports = this.client.formatPorts()
@@ -209,14 +212,19 @@ class microbitRadioBlocks {
         console.log(`ready to connect ${id}`);
         if (this.client) {
             const port = id;
-            const code = `microbitHelper.connect("${port}")`; // disconnect()
+            const firmware = "makecode_radio";
+            const code = `microbitHelper.connect("${port}","${firmware}")`; // disconnect()
 
             this.client.adapter_base_client.emit_with_messageid(
                 NODE_ID,
-                code
-            ).then(() => {
-                this.connected = true
-                this._runtime.emit(this._runtime.constructor.PERIPHERAL_CONNECTED);
+                code,
+                10000
+            ).then((msg) => {
+                // console.debug("connect msg->",msg)
+                if (msg == "ok"){
+                    this.connected = true
+                    this._runtime.emit(this._runtime.constructor.PERIPHERAL_CONNECTED);
+                }
             })
         }
     }
@@ -443,7 +451,7 @@ class microbitRadioBlocks {
         this.client.adapter_base_client.emit_without_messageid(NODE_ID, python_code);
         return;
     }
-
+    /*
     update_ports(args) {
         const code = `microbitHelper.update_ports()`; // 广播 , 收到特定信息更新变量
         return this.client.adapter_base_client.emit_with_messageid(
@@ -459,7 +467,7 @@ class microbitRadioBlocks {
             NODE_ID,
             code
         );
-    }
+    }*/
 
 }
 
