@@ -42,6 +42,12 @@ const Form_sendMessageAndWait = {
     "zh-cn": "广播[content]并等待",
 }
 
+const Form_set_radio_channel = {
+    en: "set radio channel to [content]",
+    "zh-cn": "无线设置组[content]",
+}
+
+
 const Form_sendMessage = {
     en: "broadcast [content]",
     "zh-cn": "广播 [content]",
@@ -52,8 +58,8 @@ const Form_sendMessage = {
  * @type {string}
  */
 // eslint-disable-next-line max-len
-const blockIconURI = require("./icon_logo.png");
-const menuIconURI = blockIconURI;
+const blockIconURI = require('./icon_block.svg');
+const menuIconURI = require('./icon.svg');
 
 const NODE_ID = "eim/extension_microbit_radio";
 const HELP_URL = "https://adapter.codelab.club/extension_guide/microbit_radio/";
@@ -141,7 +147,7 @@ class microbitRadioBlocks {
          * The runtime instantiating this block package.
          * @type {Runtime}
          */
-        this._runtime = runtime
+        this._runtime = runtime;
         this.client = new Client(NODE_ID, HELP_URL,runtime, this); // this is microbitRadioBlocks
 
         this._runtime.registerPeripheralExtension('microbitRadio', this); // 主要使用UI runtime
@@ -163,10 +169,10 @@ class microbitRadioBlocks {
     }
 
     scan() {
-        if (window.socketState !== undefined && !window.socketState) {
+        if (!this.client.adapter_base_client.connected) {
             this._runtime.emit(this._runtime.constructor.PERIPHERAL_REQUEST_ERROR, {
                 message: `Codelab adapter 未连接`,
-                extensionId: this.extensionId
+                extensionId: "microbitRadio"
             });
             return
         }
@@ -224,7 +230,18 @@ class microbitRadioBlocks {
                 if (msg == "ok"){
                     this.connected = true
                     this._runtime.emit(this._runtime.constructor.PERIPHERAL_CONNECTED);
-                }
+                };
+                if (msg == "flash..."){
+                    // https://github.com/LLK/scratch-vm/blob/3e65526ed83d6ef769bd33e4b73e87b8e7184c9b/src/engine/runtime.js#L637
+                    setTimeout(() => {
+                        this._runtime.emit(this._runtime.constructor.PERIPHERAL_REQUEST_ERROR,
+                            {
+                                message: `固件已烧录，请重新连接`,
+                                extensionId: "microbitRadio",
+                            }
+                            );
+                        // reject(`timeout(${timeout}ms)`);
+                      }, 15000);                };
             })
         }
     }
@@ -248,6 +265,7 @@ class microbitRadioBlocks {
     }
 
     reset() {
+        this.extensionId = "microbitRadio";
         console.log("reset");
         this.connected = false
         this._runtime.emit(this._runtime.constructor.PERIPHERAL_DISCONNECTED);
@@ -293,7 +311,7 @@ class microbitRadioBlocks {
         let the_locale = this._setLocale();
         return {
             id: "microbitRadio",
-            name: "microbitRadio",
+            name: "micro:bit radio",
             menuIconURI: menuIconURI,
             blockIconURI: blockIconURI,
             showStatusButton: true,
@@ -304,6 +322,18 @@ class microbitRadioBlocks {
                     text: FormHelp[the_locale],
                     arguments: {},
                 },
+                {
+                    opcode: "set_radio_channel",
+                    blockType: BlockType.COMMAND,
+                    text: Form_set_radio_channel[the_locale],
+                    arguments: {
+                        content: {
+                            type: ArgumentType.STRING,
+                            defaultValue: "1",
+                        },
+                    },
+                },
+                // radio_8
                 /*
                 {
                     opcode: "control_extension",
@@ -445,9 +475,15 @@ class microbitRadioBlocks {
         return this.client.adapter_base_client.emit_with_messageid(NODE_ID, python_code);
     }
 
+    set_radio_channel(args){
+        const content = args.content;
+        const python_code = `microbitHelper.write('radio_${content}\\n')`;
+        return this.client.adapter_base_client.emit_with_messageid(NODE_ID, python_code);
+    }
+
     broadcastMessage(args) {
         const content = args.content;
-        const python_code = `microbitHelper.write('${content}\\n')`; 
+        const python_code = `microbitHelper.write('${content}\\n')`;
         this.client.adapter_base_client.emit_without_messageid(NODE_ID, python_code);
         return;
     }
